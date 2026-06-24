@@ -4,11 +4,17 @@ using TMPro;
 public class NombreJugador : MonoBehaviour
 {
     public TMP_Text textoNombre;
-    public string clavePlayerPrefs; 
+    public string nombreJugador;
 
     void Start()
     {
-        string nombre = PlayerPrefs.GetString(clavePlayerPrefs, "Jugador");
-        textoNombre.text = nombre;
+        if (!string.IsNullOrEmpty(nombreJugador))
+        {
+            textoNombre.text = $"Jugador \"{nombreJugador}\"";
+        }
+        else
+        {
+            textoNombre.text = "Jugador";
+        }
     }
 }

@@ -9,22 +9,23 @@ public class DisparoJugador : MonoBehaviour
     public Transform shootPoint;
     public AudioSource SonidoDisparo;
 
-    public float maxDistance = 5f;
     public int numeroPuntos = 15;
     public float tiempoEntrePuntos = 0.1f;
+
+
 
     public bool puedeDisparar = true;
 
     private List<GameObject> puntos = new List<GameObject>();
     public CameraShake cameraController;
 
-    [Header("Disparo")]
-    public float fuerzaHorizontal = 10f;
-    public float fuerzaCurva = 8f; 
 
     [Header("Trayectoria")]
-    public float gravedad = -9.81f;
-
+    public float minFuerza = 6f;
+    public float maxFuerza = 20f;
+    public float fuerzaCurva = 8f;
+    public float maxDistance = 8f;
+    public float gravedadPersonalizada = -9.8f;
     public int idJugador;
 
     void Start()
@@ -40,6 +41,9 @@ public class DisparoJugador : MonoBehaviour
 
     void Update()
     {
+        bool esMiTurno = GameManager.instance.turno == idJugador;
+
+        MostrarPuntos(esMiTurno && puedeDisparar);
         if (GameManager.instance.turno != idJugador) return;
         if (!GameManager.instance.puedeDisparar) return;
         if (GameManager.instance.gameOver) return;
@@ -58,29 +62,38 @@ public class DisparoJugador : MonoBehaviour
 
     Vector3 CalcularVelocidadInicial()
     {
-        Vector3 mousePos = Input.mousePosition;
-        mousePos.z = 10f;
+        Vector3 mouse = Input.mousePosition;
+        mouse.z = Mathf.Abs(Camera.main.transform.position.z);
 
-        Vector3 worldPos = Camera.main.ScreenToWorldPoint(mousePos);
-        worldPos.z = 0f;
+        Vector3 world = Camera.main.ScreenToWorldPoint(mouse);
 
-        Vector3 dir = (worldPos - shootPoint.position).normalized;
+        Vector2 origen = shootPoint.position;
+        Vector2 destino = new Vector2(world.x, world.y);
 
-        float distancia = Vector3.Distance(worldPos, shootPoint.position);
+        Vector2 desplazamiento = destino - origen;
+
+        float distancia = desplazamiento.magnitude;
+
+        Vector2 dir = desplazamiento.normalized;
+
         float distanciaNormalizada = Mathf.Clamp01(distancia / maxDistance);
+        float fuerza = Mathf.Lerp(minFuerza, maxFuerza, distanciaNormalizada);
 
-        float fuerza = distanciaNormalizada * fuerzaHorizontal;
+        Vector2 velocidad = dir * fuerza;
 
-        Vector3 velocidad = dir * fuerza;
+        float gravedad = Mathf.Abs(gravedadPersonalizada);
 
-        float lateral = Mathf.Abs(dir.x);
-        float curva = fuerzaCurva * (1f - distanciaNormalizada) * (1f - lateral);
+        float curva = (1f - distanciaNormalizada) * fuerzaCurva;
 
         velocidad.y += curva;
 
-        return velocidad;
-    }
+        if (distanciaNormalizada > 0.9f)
+        {
+            curva = 0f;
+        }
 
+        return new Vector3(velocidad.x, velocidad.y, 0f);
+    }
     void Shoot()
     {
         Vector3 velocidad = CalcularVelocidadInicial();
@@ -94,7 +107,7 @@ public class DisparoJugador : MonoBehaviour
 
         puedeDisparar = false;
         MostrarPuntos(false);
-        Invoke(nameof(ActivarPuntos), 0.5f);
+        //Invoke(nameof(ActivarPuntos), 0.5f);
 
         cameraController.SeguirProyectil(projectile.transform);
 
@@ -106,17 +119,17 @@ public class DisparoJugador : MonoBehaviour
     void DibujarTrayectoria()
     {
         if (!puntos[0].activeSelf) return;
+        Vector3 velocidadInicial = CalcularVelocidadInicial();
 
-        Vector3 velocidad = CalcularVelocidadInicial();
-        Vector3 gravedadVec = new Vector3(0, gravedad, 0);
+        Vector3 gravedad = new Vector3(0, gravedadPersonalizada, 0);
 
         for (int i = 0; i < puntos.Count; i++)
         {
             float t = i * tiempoEntrePuntos;
 
             Vector3 pos = shootPoint.position +
-                          velocidad * t +
-                          0.5f * gravedadVec * t * t;
+                          velocidadInicial * t +
+                          0.5f * gravedad * t * t;
 
             pos.z = 0f;
             puntos[i].transform.position = pos;
@@ -127,7 +140,7 @@ public class DisparoJugador : MonoBehaviour
     {
         GameManager.instance.TerminarTurno();
         puedeDisparar = true;
-        MostrarPuntos(true);
+        //MostrarPuntos(true);
     }
 
     void ActivarPuntos()
