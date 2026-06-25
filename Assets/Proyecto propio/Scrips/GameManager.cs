@@ -30,6 +30,9 @@ public class GameManager : MonoBehaviour
     public Transform jugador1;
     public Transform jugador2;
 
+    private bool jugador1DisparoFinal = false;
+    private bool jugador2DisparoFinal = false;
+
     void Awake()
     {
         if (instance == null)
@@ -75,24 +78,21 @@ public class GameManager : MonoBehaviour
     public void UseShot(int player)
     {
         if (player == 1)
+        {
             shotsLeft1--;
+
+            if (shotsLeft1 <= 0)
+                jugador1DisparoFinal = true;
+        }
         else
+        {
             shotsLeft2--;
 
-        UpdateUI(player);
-        CheckLoseAfterShot(player);
-    }
-
-    public void CheckLoseAfterShot(int player)
-    {
-        if (gameOver) return;
-
-        int shots = (player == 1) ? shotsLeft1 : shotsLeft2;
-
-        if (shots <= 0)
-        {
-            Lose(player);
+            if (shotsLeft2 <= 0)
+                jugador2DisparoFinal = true;
         }
+
+        UpdateUI(player);
     }
 
     public void Lose(int jugadorQuePerdio)
@@ -139,12 +139,23 @@ public class GameManager : MonoBehaviour
     {
         if (gameOver) return;
 
-        int shots = (player == 1) ? shotsLeft1 : shotsLeft2;
-
-        if (shots <= 0)
+        if (jugador1DisparoFinal && jugador2DisparoFinal)
         {
-            Lose(player);
+            StartCoroutine(ResolverFinal());
         }
+    }
+
+    IEnumerator ResolverFinal()
+    {
+        yield return new WaitForSeconds(5f);
+
+        if (gameOver) yield break;
+
+        resultText.text = "EMPATE";
+        resultText.color = Color.white;
+
+        gameOver = true;
+        Time.timeScale = 0f;
     }
 
     void UpdateUI(int player)
